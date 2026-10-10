@@ -23,7 +23,7 @@ TMUX_PLUGINS=(
 MASON_PACKAGES=(clangd pyright ruff lua-language-server)
 
 # Commands the nvim/tmux setup needs at runtime (Mason, treesitter, telescope).
-REQUIRED_CMDS=(git curl tar make gcc unzip rg fd node npm python3 tmux)
+REQUIRED_CMDS=(git curl tar make gcc unzip rg fd node npm python3 tmux zoxide)
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BIN_DIR="$HOME/.local/bin"
@@ -50,19 +50,19 @@ install_packages() {
   if command -v pacman >/dev/null; then
     # Arch only supports full upgrades; a stale sync db fails with 404 sig errors.
     as_root pacman -Syu --needed --noconfirm \
-      git curl tar gzip make gcc unzip ripgrep fd nodejs npm python tmux github-cli
+      git curl tar gzip make gcc unzip ripgrep fd nodejs npm python tmux github-cli zoxide
   elif command -v apt-get >/dev/null; then
     as_root apt-get update -qq
     as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
       git curl tar gzip build-essential unzip ripgrep fd-find nodejs npm \
-      python3 python3-venv tmux gh
+      python3 python3-venv tmux gh zoxide
     # Debian/Ubuntu ship fd as `fdfind`.
     if command -v fdfind >/dev/null && ! command -v fd >/dev/null; then
       ln -sf "$(command -v fdfind)" "$BIN_DIR/fd"
     fi
   elif command -v dnf >/dev/null; then
     as_root dnf install -y \
-      git curl tar gzip make gcc unzip ripgrep fd-find nodejs npm python3 tmux gh
+      git curl tar gzip make gcc unzip ripgrep fd-find nodejs npm python3 tmux gh zoxide
   else
     warn "unsupported package manager; install these yourself:"
     warn "  git curl tar make gcc unzip ripgrep fd nodejs npm python3(+venv) tmux"
@@ -175,6 +175,22 @@ setup_nvim_plugins() {
   nvim_headless "+MasonInstall ${MASON_PACKAGES[*]}"
 }
 
+# Hook zoxide into every shell that has a config on this machine.
+setup_zoxide() {
+  if command -v fish >/dev/null; then
+    mkdir -p "$HOME/.config/fish/conf.d"
+    echo 'zoxide init fish | source' >"$HOME/.config/fish/conf.d/zoxide.fish"
+  fi
+  local rc shell
+  for shell in bash zsh; do
+    rc="$HOME/.${shell}rc"
+    if [ -f "$rc" ] && ! grep -q 'zoxide init' "$rc"; then
+      printf '\n# added by workstation_setup\neval "$(zoxide init %s)"\n' "$shell" >>"$rc"
+    fi
+  done
+  log "zoxide hooked into shell"
+}
+
 ensure_path() {
   case ":$PATH:" in *":$BIN_DIR:"*) return ;; esac
   if command -v fish >/dev/null; then
@@ -195,6 +211,7 @@ main() {
   link "$REPO_DIR/nvim" "$HOME/.config/nvim"
   link "$REPO_DIR/tmux/tmux.conf" "$HOME/.tmux.conf"
   install_tmux_plugins
+  setup_zoxide
   setup_nvim_plugins
   ensure_path
   log "done. Reload a running tmux with: tmux source ~/.tmux.conf"

@@ -18,7 +18,8 @@ Clones this repo to `~/.workstation_setup` and runs `install.sh`.
 3. Symlinks `nvim/` → `~/.config/nvim` and `tmux/tmux.conf` → `~/.tmux.conf`
    (existing files are moved to `*.bak.<timestamp>`).
 4. Clones tmux plugins at pinned commits into `~/.tmux/plugins`.
-5. Headless nvim: restores plugins from `lazy-lock.json`, builds treesitter
+5. Installs zoxide and hooks it into fish (`conf.d`), bash and zsh (only rc files that exist).
+6. Headless nvim: restores plugins from `lazy-lock.json`, builds treesitter
    parsers, installs LSP servers via Mason. Log: `~/.cache/workstation_setup/nvim-setup.log`.
 
 Safe to re-run.
